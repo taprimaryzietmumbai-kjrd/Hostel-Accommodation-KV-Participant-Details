@@ -1750,8 +1750,8 @@ function checkPaymentScreenshotStatus(requestId) {
   }
 
   function sameRegion(a, b) {
-    return clean(a).replace(/\\bREGION\\b/g, '').trim() ===
-      clean(b).replace(/\\bREGION\\b/g, '').trim();
+    return clean(a).replace(/\bREGION\b/g, '').trim() ===
+      clean(b).replace(/\bREGION\b/g, '').trim();
   }
 
   // Resolve a participant's school against BOTH the KV name and its address.
