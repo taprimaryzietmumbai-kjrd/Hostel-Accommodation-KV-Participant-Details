@@ -1749,10 +1749,14 @@ function checkPaymentScreenshotStatus(requestId) {
     return normaliseSchool(value).split(' ').filter(function (word) { return word.length >= 2; });
   }
 
-  function sameRegion(a, b) { return clean(a) === clean(b); }
+  function sameRegion(a, b) {
+    return clean(a).replace(/\\bREGION\\b/g, '').trim() ===
+      clean(b).replace(/\\bREGION\\b/g, '').trim();
+  }
 
-  // Resolve within the participant's region. Exact normalised school-name matches
-  // take priority; conservative token matching is only a fallback. Never guess ties.
+  // Resolve a participant's school against BOTH the KV name and its address.
+  // This is important for common sheet entries such as "KV No. 1 Shahibaug",
+  // where the number is in the official name but the locality is in the address.
   function findKV(school, region) {
     if (!Array.isArray(KVS_DATA) || !String(school || '').trim() || !String(region || '').trim()) return null;
     const wantedName = normaliseSchool(school);
@@ -1769,21 +1773,19 @@ function checkPaymentScreenshotStatus(requestId) {
     candidates.forEach(function (item) {
       const nameTokens = schoolWords(item.name);
       const addressTokens = schoolWords(item.address);
+      const allTokens = nameTokens.concat(addressTokens);
       if (!nameTokens.length) return;
-      // Do not let a school number match a different numbered KV.
       const candidateNumber = nameTokens.find(function (word) { return /^NO[1-9]$/.test(word); });
       if (wantedNumber && candidateNumber && wantedNumber !== candidateNumber) return;
-      const matchedName = wanted.filter(function (word) { return nameTokens.includes(word); });
-      const matchedAddress = wanted.filter(function (word) { return addressTokens.includes(word); });
-      const nameCoverage = matchedName.length / wanted.length;
-      const addressCoverage = matchedAddress.length / wanted.length;
-      const coverage = Math.max(nameCoverage, addressCoverage);
-      // Require all meaningful tokens. Address-only matches are allowed only as a
-      // fallback when the school name itself does not contain enough information.
-      if (coverage < 1) return;
-      let score = nameCoverage === 1 ? 100 : 80;
-      if (wantedNumber && candidateNumber === wantedNumber) score += 20;
-      if (normaliseSchool(item.name).includes(wantedName)) score += 5;
+
+      const matched = wanted.filter(function (word) { return allTokens.includes(word); });
+      if (matched.length !== wanted.length) return;
+
+      const nameMatches = wanted.filter(function (word) { return nameTokens.includes(word); }).length;
+      const addressMatches = wanted.filter(function (word) { return addressTokens.includes(word); }).length;
+      let score = (nameMatches * 10) + (addressMatches * 4);
+      if (wantedNumber && candidateNumber === wantedNumber) score += 30;
+      if (normaliseSchool(item.name).includes(wantedName)) score += 50;
       scored.push({ item: item, score: score });
     });
     if (!scored.length) return null;
@@ -1826,11 +1828,11 @@ function checkPaymentScreenshotStatus(requestId) {
 
 
   function findRegion(value) {
-
-    return findOption(
-      document.getElementById('kvRegion'),
-      value
-    );
+    const select = document.getElementById('kvRegion');
+    if (!select || !value) return null;
+    return Array.from(select.options).find(function (option) {
+      return sameRegion(option.value, value) || sameRegion(option.textContent, value);
+    }) || null;
   }
 
 
