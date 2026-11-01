@@ -1836,12 +1836,63 @@ function checkPaymentScreenshotStatus(requestId) {
   }
 
 
-  // Participant → Designation → Region → KV → KV details.
+  // Read contact details using common Google Sheet header variations.
+  // Header matching is case/space/punctuation-insensitive.
+  function getParticipantContact(person, aliases) {
+    if (!person || typeof person !== 'object') return '';
+    const normaliseKey = function (value) {
+      return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    };
+    const keys = Object.keys(person);
+    for (let i = 0; i < aliases.length; i++) {
+      const wanted = normaliseKey(aliases[i]);
+      const found = keys.find(function (key) {
+        return normaliseKey(key) === wanted;
+      });
+      if (found && person[found] != null && String(person[found]).trim() !== '') {
+        return String(person[found]).trim();
+      }
+    }
+    return '';
+  }
+
+  function fillParticipantContactDetails(person) {
+    const fields = [
+      {
+        name: 'officePhone',
+        aliases: ['officePhone', 'officePhoneNo', 'phoneNoOffice', 'officeTelephone',
+          'officeTelephoneNo', 'officeTelephoneNumber', 'officeContact']
+      },
+      {
+        name: 'residencePhone',
+        aliases: ['residencePhone', 'residencePhoneNo', 'phoneNoResidence',
+          'residenceTelephone', 'residenceTelephoneNo', 'residenceTelephoneNumber']
+      },
+      {
+        name: 'mobile',
+        aliases: ['mobile', 'mobileNo', 'mobileNumber', 'mobilePhone',
+          'mobilePhoneNo', 'contactMobile', 'contactNumber']
+      },
+      {
+        name: 'email',
+        aliases: ['email', 'emailId', 'emailAddress', 'eMail']
+      }
+    ];
+    fields.forEach(function (item) {
+      const input = document.querySelector('[name="' + item.name + '"]');
+      if (!input) return;
+      input.value = getParticipantContact(person, item.aliases);
+    });
+  }
+
+  // Participant → Contact details → Designation → Region → KV → KV details.
   function autoFillParticipant(person) {
 
     if (!person) {
       return;
     }
+
+    fillParticipantContactDetails(person);
 
     const designation =
       document.querySelector(
