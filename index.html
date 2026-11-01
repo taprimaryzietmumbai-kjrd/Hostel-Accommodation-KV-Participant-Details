@@ -1909,11 +1909,22 @@ function checkPaymentScreenshotStatus(requestId) {
         'kvName'
       );
 
+    // Verified participant-specific correction:
+    // Pratibha Devda is attached to KV No. I, M.R. Campus, Shahibaug
+    // (KV Code 1003, Ahmedabad Region), not KV Ahmedabad Cantt.
+    const isPratibhaDevda =
+      clean(person.name || person.hindiName || '') === 'PRATIBHA DEVDA';
+
     const matchedKV =
-      findKV(
-        person.school,
-        person.region
-      );
+      isPratibhaDevda
+        ? KVS_DATA.find(function (item) {
+            return String(item.code || '').trim() === '1003' &&
+              sameRegion(item.region, 'AHMEDABAD');
+          })
+        : findKV(
+            person.school,
+            person.region
+          );
 
     if (
       kv &&
